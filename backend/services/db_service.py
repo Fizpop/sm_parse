@@ -89,6 +89,10 @@ class DBService:
         try:
             cursor = self.known_sources.find({})
             sources = await cursor.to_list(length=None)
+            # Конвертуємо ObjectId в рядки
+            for source in sources:
+                if '_id' in source:
+                    source['_id'] = str(source['_id'])
             return sources
         except Exception as e:
             logger.error(f"Error getting known sources: {str(e)}")
@@ -99,6 +103,10 @@ class DBService:
         try:
             cursor = self.new_sources.find({})
             sources = await cursor.to_list(length=None)
+            # Конвертуємо ObjectId в рядки
+            for source in sources:
+                if '_id' in source:
+                    source['_id'] = str(source['_id'])
             return sources
         except Exception as e:
             logger.error(f"Error getting new sources: {str(e)}")
@@ -130,10 +138,13 @@ class DBService:
             for source in new_sources:
                 if source.get("is_verified", False):
                     # Видаляємо з нових джерел
-                    await self.new_sources.delete_one({"_id": source["_id"]})
+                    source_id = ObjectId(source["_id"]) if isinstance(source["_id"], str) else source["_id"]
+                    await self.new_sources.delete_one({"_id": source_id})
                     
                     # Додаємо до відомих джерел
                     source["moved_at"] = datetime.utcnow()
+                    # Видаляємо старий _id перед вставкою
+                    source.pop("_id", None)
                     await self.known_sources.insert_one(source)
                     
             logger.info("Sources synchronized successfully")
